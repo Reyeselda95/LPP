@@ -1,0 +1,269 @@
+;----------------------------------------------------
+; Solución práctica 7
+;; Fecha: 31/03/2014
+;----------------------------------------------------
+
+
+;-------------------------------------------
+; Barrera de abstracción de árboles binarios
+;-------------------------------------------
+(define (make-bt dato izq der)
+    (list dato izq der))
+
+(define (make-hoja-bt dato)
+  (make-bt dato 'vacio-bt 'vacio-bt))
+
+(define (vacio-bt? btree) (equal? btree 'vacio-bt))
+(define (dato-bt btree) (car btree))
+(define (izq-bt btree) (car (cdr btree)))
+(define (der-bt btree) (car (cdr (cdr btree))))
+
+(define (hoja-bt? btree)
+   (and (vacio-bt? (izq-bt btree))
+        (vacio-bt? (der-bt btree))))
+
+;-------------------------------------------
+; Barrera de abstracción de árboles genéricos
+;-------------------------------------------
+(define (make-tree dato lista-hijos)  (cons dato lista-hijos))
+(define (make-hoja-tree dato) (make-tree dato '()))
+(define (dato-tree tree)  (car tree))
+(define (hijos-tree tree) (cdr tree))
+(define (hoja-tree? tree) (null? (hijos-tree tree)))
+
+;------------------------------------
+; Ejercicio 1
+;------------------------------------
+
+(define (construye-nivel-btree n)
+  (if (= n 1) 
+      (make-bt n 'vacio-bt 'vacio-bt)
+      (make-bt n (construye-nivel-btree (- n 1)) 
+                 (construye-nivel-btree (- n 1)))))
+
+
+; Pruebas
+
+"Ejercicio 1"
+(construye-nivel-btree 4)
+
+;------------------------------------
+; Ejercicio 2
+;------------------------------------
+;a)
+ (define (camino-btree btree lista)
+    (cond 
+      ((null? lista) '())
+      ((equal? (car lista) '=)
+           (cons (dato-bt btree) 
+                 (camino-btree btree (cdr lista))))
+      ((equal? (car lista) '<)
+           (camino-btree (izq-bt btree) (cdr lista) ))
+      ((equal? (car lista) '>)
+           (camino-btree (der-bt btree) (cdr lista) ))))
+
+ 
+ 
+; Pruebas
+
+(define btree '(9 (5 (3 (1 vacio-bt vacio-bt)
+                        (4 vacio-bt vacio-bt))
+                     (7 vacio-bt vacio-bt))
+                  (15 (13 (10 vacio-bt vacio-bt)
+                          (14 vacio-bt vacio-bt))
+                      (20 vacio-bt
+                          (23 vacio-bt vacio-bt)))))
+
+ 
+(camino-btree btree '(= < < = > =)) ; => (9 3 4)
+(camino-btree btree '(> = < < =)) ; => (15 10) 
+
+;b)
+
+; Versión 1
+
+(define (camino-max-tree tree)
+  (if (hoja-tree? tree)
+      (list (dato-tree tree))
+      (cons (dato-tree tree)
+            (camino-max-tree (max-arbol-bosque (hijos-tree tree))))))
+
+(define (max-arbol-bosque bosque)
+  (buscar-max-bosque bosque (apply max (map dato-tree bosque))))
+
+(define (buscar-max-bosque bosque maximo)
+  (if (null? bosque) '()
+      (if (= (dato-tree (car bosque)) maximo)
+          (car bosque)
+          (buscar-max-bosque (cdr bosque) maximo))))
+
+; Pruebas
+
+"Ejercicio 2"
+
+(define tree '(2 (7 (1 (10) (4))
+                    (5))
+                 (6 (2 (3)))
+                 (4)))
+
+(camino-max-tree tree) ; => (2 7 5)
+
+
+; Versión 2
+
+(define (camino-max-tree tree)
+  (if (hoja-tree? tree)
+      (list (dato-tree tree))
+      (cons (dato-tree tree)
+            (camino-max-tree (max-arbol-bosque (hijos-tree tree))))))
+
+(define (max-arbol-bosque bosque)
+  (if (null? (cdr bosque))
+      (car bosque)
+      (let ((primer-arbol (car bosque))
+            (max-resto (max-arbol-bosque (cdr bosque))))
+        (if (> (dato-tree primer-arbol)
+               (dato-tree max-resto))
+            primer-arbol
+            max-resto))))
+
+; Pruebas
+
+(camino-max-tree tree) ; => (2 7 5)
+
+
+;------------------------------------
+; Ejercicio 3
+;------------------------------------
+
+(define (sumanodos-pareja-tree tree)
+  (let ((bosque-sumados (map sumanodos-pareja-tree (hijos-tree tree))))
+    (make-tree (cons (dato-tree tree) (suma-datos-raiz bosque-sumados))
+               bosque-sumados)))
+
+; Recibe una lista de árboles con parejas de enteros en 
+; sus nodos y devuelve la suma de todos los enteros
+; en las raíces de cada árbol de la lista
+(define (suma-datos-raiz bosque-sumados)
+  (if (null? bosque-sumados) 0
+      (let ((primer-arbol (car bosque-sumados)))
+        (+ (car (dato-tree primer-arbol))
+           (cdr (dato-tree primer-arbol))                
+           (suma-datos-raiz (cdr bosque-sumados))))))
+
+; Pruebas
+
+"Ejercicio 3"
+
+(sumanodos-pareja-tree tree) 
+; =>
+;'((2 . 42) ((7 . 20) ((1 . 14) ((10 . 0)) ((4 . 0))) 
+;                     ((5 . 0))) 
+;           ((6 . 5) ((2 . 3) ((3 . 0)))) 
+;           ((4 . 0)))
+
+
+;------------------------------------
+; Ejercicio 4
+;------------------------------------
+
+;a)
+(define (palabra-tree? tree lista)
+  (cond ((null? lista) #f)
+        ((and (equal? (dato-tree tree) (car lista))
+              (hoja-tree? tree)
+              (null? (cdr lista))) #t)
+        ((equal? (dato-tree tree) (car lista))
+         (palabra-bosque? (hijos-tree tree) (cdr lista)))
+        (else #f)))
+
+(define (palabra-bosque? bosque lista)
+  (if (null? bosque) #f
+      (or (palabra-tree? (car bosque) lista)
+          (palabra-bosque? (cdr bosque) lista))))
+
+; Pruebas
+
+"Ejercicio 4"
+
+(define tree '(c (a (s (a)
+                       (o))
+                    (l))
+                 (o (l (a))
+                    (m (o)))
+                 (e (n (a)))))
+
+(palabra-tree? tree '(c e n a)) ; => #t  
+(palabra-tree? tree '(c a s a s)) ; => #f  
+(palabra-tree? tree '(c o m)) ; => #f  
+
+; Versión 2
+; Con función de orden superior exists?
+;
+
+(define (exists? pred lista)
+  (if (null? lista) #f
+      (or (pred (car lista))
+          (exists? pred (cdr lista)))))
+
+;a)
+(define (palabra-tree? tree lista)
+  (cond ((null? lista) #f)
+        ((and (equal? (dato-tree tree) (car lista))
+              (hoja-tree? tree)
+              (null? (cdr lista))) #t)
+        ((equal? (dato-tree tree) (car lista))
+         (exists? (lambda (tree)
+                    (palabra-tree? tree (cdr lista))) (hijos-tree tree)))
+        (else #f)))
+
+"Versión 2"
+
+(palabra-tree? tree '(c e n a)) ; => #t  
+(palabra-tree? tree '(c a s a s)) ; => #f  
+(palabra-tree? tree '(c o m)) ; => #f  
+
+
+;b)
+
+(define (palabra-btree btree palabra)
+  (cond
+    ((vacio-bt? btree) #f)
+    ((null? (cdr palabra))
+     (and (equal? (car palabra) (dato-bt btree))
+          (hoja-bt? btree)))
+    (else (and (equal? (car palabra) (dato-bt btree))
+               (or (palabra-btree (izq-bt btree) (cdr palabra))
+                   (palabra-btree (der-bt btree) (cdr palabra)))))))
+
+; Pruebas
+
+"b)"
+
+(define btree '(c (a (s (a vacio-bt vacio-bt)
+                        (o vacio-bt vacio-bt))
+                     (l vacio-bt vacio-bt))
+                  (o (l vacio-bt (a vacio-bt vacio-bt))
+                     (m vacio-bt (o vacio-bt vacio-bt)))))
+ 
+(palabra-btree btree '(c a s a)) ; => #t  
+(palabra-btree btree '(c a l l a)) ; => #f  
+(palabra-btree btree '(c a)) ; => #f   
+
+;------------------------------------
+; Ejercicio 5
+;------------------------------------
+
+(define (profundidad-bosque bosque)
+  (apply max (map niveles-tree bosque)))
+
+(define (niveles-tree tree)
+  (if (hoja-tree? tree)
+      1
+      (+ 1 (profundidad-bosque (hijos-tree tree)))))
+
+
+"Ejercicio 5"
+
+(profundidad-bosque (hijos-tree tree)) ; => 3
+

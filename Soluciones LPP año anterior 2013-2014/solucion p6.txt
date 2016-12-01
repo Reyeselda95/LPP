@@ -1,0 +1,271 @@
+;----------------------------------------------------
+; Solución práctica 6
+;; Fecha: 24/03/2014
+;----------------------------------------------------
+
+(define (hoja? dato)
+   (not (list? dato)))
+
+(define (plana? lista)
+   (or (null? lista)
+       (and (hoja? (car lista))
+            (plana? (cdr lista)))))
+
+;------------------------------------
+; Ejercicio 1
+;------------------------------------
+
+;a)
+(define (aplana lista)
+  (cond ((null? lista) '())
+        ((hoja? lista) (list lista))
+        (else (append (aplana (car lista)) 
+                      (aplana (cdr lista))))))
+
+
+;Pruebas
+(aplana '(1 (2 (3) (4 (5 (6) 7)))))
+; => (1 2 3 4 5 6 7)
+
+;b)
+(define (suma-listas l1 l2)
+  (cond ((null? l1) '())
+        ((hoja? l1) (+ l1 l2))
+        (else (cons (suma-listas (car l1) (car l2)) 
+                    (suma-listas (cdr l1) (cdr l2))))))
+
+;Pruebas
+(suma-listas '(1 (2 (3) (4 (5 (6) 7)))) '(1 (3 (2) (1 (1 (1) 10)))))
+;=> (2 (5 (5) (5 (6 (7) 17))))
+
+;------------------------------------
+; Ejercicio 2
+;------------------------------------
+
+(define (reducir-lista lista)
+  (cond 
+    ((null? lista) '())
+    ((hoja? (car lista))
+      (cons (car lista) (reducir-lista (cdr lista))))
+    ((plana? (car lista))
+      (reducir-lista (cdr lista)))
+    (else
+      (cons (reducir-lista (car lista)) (reducir-lista (cdr lista))))))
+
+;------------------------------------
+; Ejercicio 3
+;------------------------------------
+(define (operator? op)
+        (or (equal? op '+) 
+            (equal? op '-) 
+            (equal? op '*) 
+            (equal? op '/)))
+
+; Versión 1: Con recursión mútua
+
+(define (es-valida-exp-arit? exp)
+  (or (number? exp) 
+      (and (not (hoja? exp)) 
+           (operator? (car exp)) 
+           (valida-resto (cdr exp)))))
+
+(define (valida-resto resto)
+  (or (null? resto) 
+      (and (es-valida-exp-arit? (car resto)) 
+           (valida-resto (cdr resto)))))
+
+;Pruebas
+(es-valida-exp-arit? '(+ (2 3) 1))  ; => #f
+(es-valida-exp-arit? '(* (- 2 (- 3 1) 4) 1 (+ (* 2 (+ 3 4)) 4)))  ; => #t
+(es-valida-exp-arit? '((2 3) 1))  ; => #f
+(es-valida-exp-arit? '(3))  ; => #f
+(es-valida-exp-arit? '(+))  ; => #t
+(es-valida-exp-arit? '(2 +))  ; => #f
+(es-valida-exp-arit? '(+ +))  ; => #f
+(es-valida-exp-arit? '(+ (2 3) *))  ; => #f
+
+;------------------------------------
+; Ejercicio 4
+;------------------------------------
+(define (operator op)
+  (cond ((equal? op '+) +)
+        ((equal? op '-) -)
+        ((equal? op '*) *)
+        ((equal? op '/) /)
+        (else (error "Operador desconocido: " op))))
+
+; Versión 1: Con recursión mútua
+(define (calcula-op lista)
+  (if (number? lista) 
+      lista
+      (apply (operator (car lista)) 
+             (calcula-resto (cdr lista)))))
+
+(define (calcula-resto lista)
+  (if (null? lista)
+      '()
+      (cons (calcula-lista (car lista)) 
+            (calcula-resto (cdr lista)))))
+
+
+; Versión 2: Usando map
+(define (calcula-op lista)
+  (if (number? lista) lista
+      (apply (operator (car lista)) 
+             (map calcula-op (cdr lista)))))
+
+;Pruebas
+(calcula-op '(+ (- 5 2) 3)) ; => 6
+(calcula-op '(* (- 2 (+ 3 (* 4 (- 6 2) 3) 1)) 1)) ; => -50
+
+;------------------------------------
+; Ejercicio 5
+;------------------------------------
+
+;a)Diseño de la barrera de abstracción
+
+; Punto2D:
+;
+; (make-punto2D x y) : crea un punto2D de coordenadas (x,y)
+; (coord-x punto2D)  : devuelve la coordenada x del punto2D
+; (coord-y punto2D)  : devuelve la coordenada y del punto2D
+; (punto2D? p) : comprueba si p es un punto 2D
+; (distancia-euclidea p1 p2) : devuelve la distancia euclídea entre los dos puntos
+; (puntos-iguales? p1 p2) : comprueba si los dos puntos son iguales
+
+; Circulo2D:
+;
+; (make-circulo punto2D radio) : crea un circulo con centro en punto2D y radio especificado
+; (centro circulo)    : devuelve las coordenadas (x,y) del centro del círculo
+; (radio circulo)     : devuelve el radio del círculo
+; (intersectan? circulo1 circulo2) : comprueba si 2 círculos intersectan
+; (engloba? circulo1 circulo2)     : comprueba si el círculo1 engloba a círculo2
+; (traslada circulo1 desp-x desp-y) : devuelve un nuevo círculo resultante de desplazar en el eje X (desp-x) y en el eje Y (desp-y) el círculo
+; (circulo? c) : comprueba si c es un círculo
+; (circulos-iguales? c1 c2) : comprueba si los dos círculos son iguales
+
+
+;b)Implementación 
+
+;Barrera de abstracción de punto2D
+; Constructores
+(define (make-punto2D x y)
+  (cons 'punto2D (cons x y)))
+(define (make-origen-coord)
+  (make-punto2D 0 0))
+
+; getters
+(define (coord-x p) (cadr p)) 
+(define (coord-y p) (cddr p))
+
+; operadores
+(define (punto2D? p)
+  (and (pair? p)
+       (equal? 'punto2D (car p))))
+
+(define (distancia-euclidea p1 p2)
+  (sqrt (+ (expt (- (coord-x p1) (coord-x p2)) 2) (expt (- (coord-y p1) (coord-y p2)) 2))))
+
+(define (puntos-iguales? p1 p2)
+  (and (= (coord-x p1) (coord-x p2)) (= (coord-y p1) (coord-y p2))))
+
+;Barrera de abstracción de círculo
+; Constructor
+(define (make-circulo c r)
+  (cons 'circulo (cons c r)))
+
+; getters
+(define (centro c) (cadr c))
+(define (radio c) (cddr c))
+
+; Operadores
+(define (circulo? c)  
+  (and (pair? c)
+       (equal? 'circulo (car c))))
+
+(define (intersectan? circulo1 circulo2)
+  (<= (distancia-euclidea (centro circulo1) (centro circulo2)) (+ (radio circulo1) (radio circulo2))))
+
+(define (engloba? circulo1 circulo2)
+  (<= (+ (distancia-euclidea (centro circulo1) (centro circulo2)) (radio circulo2)) (radio circulo1)))
+
+(define (traslada circulo desp-x desp-y)
+  (make-circulo (make-punto2D (+ (coord-x (centro circulo)) desp-x) (+ (coord-y (centro circulo)) desp-y)) (radio circulo)))
+
+(define (circulos-iguales? c1 c2)
+  (and (puntos-iguales? (centro c1) (centro c2)) (= (radio c1) (radio c2))))
+
+;Pruebas
+(define p0 (make-origen-coord))
+(define p1 (make-punto2D 3 3))
+(define p2 (make-punto2D -5 0))
+p0
+(punto2D? 3)
+(punto2D? p0)
+(punto2D? p1)
+(distancia-euclidea p0 p1)
+(distancia-euclidea p0 p2)
+(puntos-iguales? p0 p0)
+(puntos-iguales? p0 p1)
+(define circulo1 (make-circulo p0 3))
+(define circulo2 (make-circulo p1 2))
+(define circulo3 (make-circulo p2 1))
+(define circulo4 (make-circulo p0 2))
+(circulo? circulo1)
+(circulo? 4)
+(intersectan? circulo1 circulo2)
+(intersectan? circulo1 circulo3)
+(engloba? circulo1 circulo4)
+(engloba? circulo1 circulo2)
+(traslada circulo2 -3 -3)
+(circulos-iguales? circulo4 (traslada circulo2 -3 -3))
+
+;------------------------------------
+; Ejercicio 6
+;------------------------------------
+
+
+;a) Version Recursiva
+
+(define (b-box-circulo circulo)
+  (let ((cx (coord-x (centro circulo)))
+        (cy (coord-y (centro circulo)))
+        (r (radio circulo)))
+    (cons (make-punto2D (- cx r) (- cy r))
+          (make-punto2D (+ cx r) (+ cy r)))))
+
+(define (union-circulo-bbox circulo bbox)
+  (let ((cx (coord-x (centro circulo)))
+        (cy (coord-y (centro circulo)))
+        (r (radio circulo))
+        (xmin (coord-x (car bbox)))
+        (ymin (coord-y (car bbox)))
+        (xmax (coord-x (cdr bbox)))
+        (ymax (coord-y (cdr bbox))))
+    (cons (make-punto2D (min (- cx r) xmin)
+                        (min (- cy r) ymin))
+          (make-punto2D (max (+ cx r) xmax)
+                        (max (+ cy r) ymax)))))
+    
+(define (bounding-box lista-cir)
+  (if (null? (cdr lista-cir))
+      (b-box-circulo (car lista-cir))
+      (let ((b-box (bounding-box (cdr lista-cir))))
+        (union-circulo-bbox (car lista-cir) b-box))))
+
+;b) Utilizamos la función de orden superior "foldr" definida
+; en el lenguaje Muy Grande. Esta función hace lo mismo que
+; la función "fold" vista en teoría
+
+(define (bounding-box lista-cir)
+  (foldr union-circulo-bbox (b-box-circulo (car lista-cir)) (cdr lista-cir)))
+
+;Pruebas
+(define p1 (make-punto2D 20 20))
+(define p2 (make-punto2D 25 35))
+(define p3 (make-punto2D 40 28))
+(define c1 (make-circulo p1 10))
+(define c2 (make-circulo p2 10))
+(define c3 (make-circulo p3 7))
+(bounding-box (list c1 c2 c3))
+; => ((10 . 10) 47 . 45)

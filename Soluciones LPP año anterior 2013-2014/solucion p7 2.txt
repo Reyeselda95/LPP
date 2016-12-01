@@ -1,0 +1,76 @@
+﻿/*---------------------------------------------------
+SoluciÃ³n prÃ¡ctica 7 Scala
+Fecha: 31/03/2014
+----------------------------------------------------*/
+
+/* 
+-----------
+Ejercicio 1 
+-----------
+*/
+
+def max(x: Int, y: Int): Int =  {
+    if (x > y) x
+    else y
+}
+
+def maximo(lista: List[Int]): Int = {
+    if (lista.tail.isEmpty) lista.head
+    else max(lista.head, maximo(lista.tail))
+}
+
+
+// Pruebas
+
+maximo(List(2, 8, 20, 1)) // => 20
+
+/* 
+-----------
+Ejercicio 2 
+-----------
+*/
+
+def devuelveTupla(t: (Int,Int,Int)): (Int,(Int,Int),(Int,Int,Int)) = {
+    (t._1,(t._1,t._2),t)
+}
+
+// Pruebas
+
+devuelveTupla((1,2,3)) // => (1,(1,2),(1,2,3))
+
+/* 
+-----------
+Ejercicio 3 
+-----------
+*/
+
+def diferencias(lista: List[Int]): List[Int] = {
+    if (lista.tail.isEmpty) Nil
+    else (lista.head - lista.tail.head :: diferencias(lista.tail))
+}
+
+// Pruebas
+
+diferencias(List (30, 16, 21, 9, 42))  // => List(14, 5, 12, 33)  
+diferencias(List (2))   // â‡’ List()  
+
+
+/* 
+-----------
+Ejercicio 4 
+-----------
+*/
+
+def concatenaInversaLista(lista: List[String]):String = {
+    if (lista.isEmpty) ""
+    else concatenaInversaLista(lista.tail) + lista.head
+}
+
+// Pruebas
+
+concatenaInversaLista(List("aa", "bb", "cc")) // => "ccbbaa" 
+
+
+
+
+
